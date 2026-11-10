@@ -68,6 +68,10 @@ button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outl
 .viewport canvas:active{cursor:grabbing}
 .adjusting .viewport canvas{cursor:crosshair}
 .vtools{position:absolute;top:10px;right:10px;z-index:4;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.legend{position:absolute;left:12px;right:12px;bottom:28px;z-index:4;display:flex;flex-wrap:wrap;gap:4px 16px;font-size:12px;color:var(--ink);pointer-events:none}
+.legend span{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:2px 8px}
+.legend .ln{display:inline-block;width:22px;border-top:1.5px solid var(--muted)}
+.legend .ln.dash{border-top-style:dashed}
 .gesture{position:absolute;left:12px;right:12px;bottom:8px;margin:0;font-size:12px;color:var(--muted);pointer-events:none}
 .loading{position:absolute;inset:0;display:grid;place-items:center;font:600 18px var(--f-display);letter-spacing:.04em;text-transform:uppercase;color:var(--muted);z-index:5}
 .adjustbar{position:absolute;left:10px;top:10px;right:auto;z-index:4;max-width:min(420px,calc(100% - 20px));background:var(--panel);border:1.5px solid var(--warn);border-radius:8px;padding:10px 12px;font-size:13px;display:flex;flex-direction:column;gap:8px}
@@ -80,11 +84,13 @@ button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outl
 .leader.occ{stroke-dasharray:3 3;opacity:.45}
 .leader.active{stroke:var(--accent);stroke-width:2;opacity:1}
 .pin{pointer-events:auto;cursor:pointer}
-.pin circle{fill:var(--panel);stroke:var(--ink);stroke-width:1.5}
+.pin{opacity:.55;transition:opacity .15s}
+.pin:hover{opacity:1}
+.pin circle{fill:var(--panel);fill-opacity:.6;stroke:var(--ink);stroke-width:1.2}
 .pin text{fill:var(--ink);font:500 9px var(--f-mono);text-anchor:middle;dominant-baseline:central}
-.pin.occ{opacity:.35}
+.pin.occ{opacity:.25}
 .pin.active{opacity:1}
-.pin.active circle{fill:var(--accent);stroke:var(--accent)}
+.pin.active circle{fill:var(--accent);fill-opacity:1;stroke:var(--accent)}
 .pin.active text{fill:var(--accent-ink)}
 .pin.ok circle{stroke:var(--ok);stroke-width:2.5}
 .pin.bad circle{stroke:var(--bad);stroke-width:2.5}
@@ -137,6 +143,7 @@ button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outl
   .col{justify-content:flex-start}
   .leader{display:none}
   .gesture{display:none}
+  .legend{bottom:8px;left:8px;right:8px;font-size:11px}
   [data-stage="2"] .board,[data-stage="3"] .board{padding-bottom:55vh}
 }
 @media (max-width:640px){
@@ -196,6 +203,7 @@ button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outl
         </div>
         <textarea id="exportBox" readonly hidden aria-label="Posições das setas"></textarea>
       </div>
+      <div class="legend"><span><i class="ln"></i>peça à vista</span><span><i class="ln dash"></i>peça escondida atrás de outra: gire o modelo ou toque no número</span></div>
       <p class="gesture">Arraste para girar · roda do mouse ou pinça para aproximar · toque no número do item para ir até a peça</p>
     </div>
     <div class="col" id="colR"></div>
@@ -5502,11 +5510,11 @@ else
 /* n, nome, escore, arquivo, peças, ponto de busca, direção de visão, distância do foco, aviso */
 const ITEMS = [
   ['01','Conjunto redutor de pressão ou válvula de 1º estágio',1,'body',['Drager_AirBoss_28','Drager_AirBoss_29'],[0.2,-0.08,0.08],[1,0,0.7],0.6,''],
-  ['02','Alarme de baixa pressão tipo apito',1,'unit',['*'],[-0.76,0.86,0.664],[-0.2,0.3,1],0.45,''],
+  ['02','Alarme de baixa pressão tipo apito',1,'unit',['*'],[-0.76,0.855,0.652],[-0.2,0.3,1],0.45,''],
   ['03','Suporte dorsal ou Backplate',1,'body',['Plane016','Drager_AirBoss_mesh'],[0.14,1.25,0.37],[0.6,0.3,1],1.4,''],
   ['04','Tirantes abdominais ou tirantes de cintura',1,'body',['Drager_AirBoss_13'],[-0.45,0.36,0.6],[0.1,0.3,1],1.3,''],
   ['07','Tirantes de ombro',0.5,'body',['Drager_AirBoss_4','Drager_AirBoss_5'],[-0.25,1.0,0.65],[0.1,0.3,1],1.3,''],
-  ['08','Manômetro luminescente',0.5,'unit',['*'],[-0.76,0.578,0.68],[-0.2,0.15,1],0.6,''],
+  ['08','Manômetro luminescente',0.5,'unit',['*'],[-0.76,0.72,0.682],[-0.2,0.15,1],0.6,''],
   ['09','Regulador de respiração ou válvula de demanda',1,'mask',['*'],[-0.902,1.586,0.008],[-0.8,0,0.6],0.55,''],
   ['10','Mangueiras ou dutos do sistema pneumático',0.5,'body',['Drager_AirBoss_20'],[-0.7,1.0,0.62],[-0.1,0.3,1],1.2,''],
   ['11','Cilindro',0.5,'tank',['Sphere'],[0.6,0.95,0.15],[1,0.2,0.6],1.6,''],
@@ -5558,18 +5566,17 @@ function b64ToBuf(id){
 const loader=new THREE.GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
 const roots={}, occluders=[];
 function buildGauge(){
-  /* Manômetro oval pendurado na mangueira, na altura do peito, como no PSS 3000 */
   const g=new THREE.Group(), M=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.6,metalness:0},o||{}));
-  const add=(geo,mat,pos,rot,sc)=>{const m=new THREE.Mesh(geo,mat);m.position.set(...pos);if(rot)m.rotation.set(...rot);if(sc)m.scale.set(...sc);g.add(m);return m;};
-  const X=-0.76,Y=0.60,Z=0.645,R2=Math.PI/2,rub=M(0x0b0c0d,{roughness:.85});
-  add(new THREE.CylinderGeometry(0.05,0.05,0.04,48),rub,[X,Y,Z],[R2,0,0],[1,1,1.55]);
-  add(new THREE.CylinderGeometry(0.044,0.044,0.008,48),M(0x18191b,{roughness:.6}),[X,Y,Z+0.022],[R2,0,0],[1,1,1.55]);
-  add(new THREE.CylinderGeometry(0.039,0.039,0.006,40),M(0x050506,{roughness:.9}),[X,Y-0.022,Z+0.026],[R2,0,0]);
-  add(new THREE.CircleGeometry(0.034,40),M(0xf2f7e4,{emissive:0xb8e86a,emissiveIntensity:.35,roughness:.4}),[X,Y-0.022,Z+0.0292]);
-  add(new THREE.RingGeometry(0.024,0.029,40,1,Math.PI*1.15,Math.PI*0.35),M(0xc8102e),[X,Y-0.022,Z+0.0296]);
-  add(new THREE.BoxGeometry(0.0035,0.03,0.002),M(0x111111),[X+0.005,Y-0.014,Z+0.0302],[0,0,-0.7]);
-  add(new THREE.CylinderGeometry(0.009,0.009,0.235,16),M(0x1c1e21),[X,0.794,Z]);
-  add(new THREE.CylinderGeometry(0.015,0.015,0.05,20),M(0xc8102e,{roughness:.5}),[X,0.86,Z]);
+  const add=(geo,mat,pos,rot)=>{const m=new THREE.Mesh(geo,mat);m.position.set(...pos);if(rot)m.rotation.set(...rot);g.add(m);return m;};
+  add(new THREE.CylinderGeometry(0.072,0.072,0.035,48),M(0x050506,{roughness:.9}),[-0.76,0.72,0.64],[Math.PI/2,0,0]);
+  add(new THREE.CylinderGeometry(0.076,0.076,0.012,48),M(0x050506,{metalness:0,roughness:.9}),[-0.76,0.72,0.659],[Math.PI/2,0,0]);
+  add(new THREE.CircleGeometry(0.062,48),M(0xf2f7e4,{emissive:0xb8e86a,emissiveIntensity:.35,roughness:.4}),[-0.76,0.72,0.6655]);
+  add(new THREE.BoxGeometry(0.005,0.052,0.002),M(0x111111),[-0.755,0.731,0.667],[0,0,-0.7]);
+  add(new THREE.CylinderGeometry(0.009,0.009,0.16,16),M(0x1c1e21),[-0.756,0.83,0.632]);
+  add(new THREE.CylinderGeometry(0.015,0.015,0.05,20),M(0xc8102e,{roughness:.5}),[-0.76,0.83,0.632]);
+  const C=new THREE.Vector3(-0.76,0.72,0.64);
+  g.children.slice(0,4).forEach(m=>{m.position.sub(C).multiplyScalar(1.5).add(C);m.scale.multiplyScalar(1.5);});
+  g.children[5].position.y=0.855;
   return g;
 }
 /* Manômetro do cilindro: peça representativa presa à válvula do cilindro */
@@ -5767,7 +5774,7 @@ function moved(){occDirty=true;needsRender=true;lastMove=performance.now();}
 const EXPLODE={tank:new THREE.Vector3(0.62,-0.02,0.05),mask:new THREE.Vector3(-0.22,0.5,0.02),unit:new THREE.Vector3(0,0,0),ldv:new THREE.Vector3(0,0,0)};
 const LDV=['Drager_AirBoss_21','Drager_AirBoss_22','Drager_AirBoss_23','Drager_AirBoss_32','Drager_AirBoss_33','Drager_AirBoss_35'].map(nm);
 const explodeObjs={tank:[],mask:[],unit:[],ldv:[]};
-let explodeT=0, explodeTarget=0;
+let explodeT=0, explodeTarget=0, explodeAnim=null;
 const btnExplode=document.getElementById('btnExplode'), explodeRange=document.getElementById('explodeRange');
 function applyExplode(){
   for(const k in explodeObjs) explodeObjs[k].forEach(o=>o.position.copy(o.userData.base).addScaledVector(EXPLODE[k],explodeT));
@@ -5776,10 +5783,11 @@ function applyExplode(){
 }
 function setExplode(v,animate){
   explodeTarget=v; btnExplode.setAttribute('aria-pressed',String(v>0.5)); btnExplode.textContent=v>0.5?'Juntar peças':'Separar peças';
-  if(!animate||reduce){explodeT=v;applyExplode();}
+  if(!animate||reduce){explodeAnim=null;explodeT=v;applyExplode();}
+  else explodeAnim={from:explodeT,to:v,t:0};
   computeHome(); if(!touched&&animate) tween(HOME_T,homePos);
 }
-btnExplode.addEventListener('click',()=>{const v=explodeTarget>0.5?0:1; explodeRange.value=v*100; setExplode(v,true);});
+btnExplode.addEventListener('click',()=>{const v=explodeTarget>0.5?0:1; setExplode(v,true);});
 explodeRange.addEventListener('input',()=>{setExplode(explodeRange.value/100,false);});
 controls.target.copy(HOME_T);
 
@@ -5802,9 +5810,13 @@ function loop(now){
     controls.target.lerpVectors(anim.ft,anim.tt,e); camera.position.lerpVectors(anim.fp,anim.tp,e);
     if(anim.t>=1) anim=null; moved();
   }
-  if(explodeT!==explodeTarget&&Math.abs(explodeTarget-explodeT)>0.0005&&!reduce){
-    const s=dt/0.8; explodeT+=Math.max(-s,Math.min(s,explodeTarget-explodeT));
-    if(Math.abs(explodeTarget-explodeT)<0.002) explodeT=explodeTarget;
+  if(explodeAnim){
+    /* Separação suave: acelera no começo e freia no fim (1,4 s) */
+    explodeAnim.t=Math.min(1,explodeAnim.t+dt/1.4);
+    const k=explodeAnim.t, e=k<0.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;
+    explodeT=explodeAnim.from+(explodeAnim.to-explodeAnim.from)*e;
+    explodeRange.value=Math.round(explodeT*100);
+    if(explodeAnim.t>=1){explodeT=explodeAnim.to;explodeAnim=null;}
     applyExplode();
   }
   controls.update();
