@@ -44,6 +44,11 @@ h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:clamp(30px,4v
 .btn{font:600 14px var(--f-body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 14px;cursor:pointer}
 .btn:hover{border-color:var(--ink)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+#btnNext{font-size:15px;padding:10px 18px;display:inline-flex;align-items:center;gap:8px}
+#btnNext.ready{animation:nudge 1.6s ease-in-out infinite}
+@keyframes nudge{0%,100%{box-shadow:0 0 0 0 rgba(200,16,46,.45)}50%{box-shadow:0 0 0 8px rgba(200,16,46,0)}}
+.done-msg{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;background:var(--okbg);border:1.5px solid var(--ok);border-radius:8px;padding:10px 14px;font-weight:600}
+.done-msg[hidden]{display:none}
 .btn.small{padding:5px 10px;font-size:13px}
 .btn[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -134,7 +139,7 @@ button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outl
   .board{grid-template-columns:1fr}
   .viewport{height:60vh}
 }
-@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
@@ -164,6 +169,7 @@ button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outl
     </div>
   </nav>
   <p class="hint" id="hint"></p>
+  <div class="done-msg" id="doneMsg" hidden><span id="doneText"></span><button class="btn primary" id="btnNext2">Ir para a próxima etapa →</button></div>
 
   <section class="board" id="board">
     <div class="col" id="colL"></div>
@@ -5498,7 +5504,7 @@ const ITEMS = [
   ['09','Regulador de respiração ou válvula de demanda',1,'mask',['*'],[-0.902,1.586,0.008],[-0.8,0,0.6],0.55,''],
   ['10','Mangueiras ou dutos do sistema pneumático',0.5,'body',['Drager_AirBoss_20'],[-0.7,1.0,0.62],[-0.1,0.3,1],1.2,''],
   ['11','Cilindro',0.5,'tank',['Sphere'],[0.6,0.95,0.15],[1,0.2,0.6],1.6,''],
-  ['12','Manômetro do cilindro',0.5,'tank',['Drager_AirBoss_24'],[0.38,-0.02,0.15],[1,0,0.8],0.6,'O modelo não tem o manômetro do cilindro; a seta indica a válvula do cilindro, onde ele fica.'],
+  ['12','Manômetro do cilindro',0.5,'tank',['*'],[0.33,-0.01,0.128],[0.3,0.15,1],0.45,''],
   ['13','Batente do cilindro',0.5,'body',['Drager_AirBoss_26','Drager_AirBoss_58'],[0.12,-0.18,0.25],[1,0.2,0.6],0.7,'Posição aproximada no PSS 7000.'],
   ['14','Conexão cga - Rosca macho',0.5,'body',['Drager_AirBoss_27'],[0.18,0.0,0.06],[0.5,0,1],0.5,''],
   ['15','Anel de vedação ou o-ring',1,'body',['Drager_AirBoss_27'],[0.158,-0.017,0.13],[0.3,0,1],0.45,'Posição aproximada no PSS 7000.'],
@@ -5509,7 +5515,7 @@ const ITEMS = [
   ['22','Mascarilha',1,'mask',['Plane_005_5'],[-0.862,1.853,0.039],[-1,0.2,0.4],0.6,''],
   ['23','Botão do sistema by pass ou botão de economia de ar',1,'mask',['Plane_005_4'],[-1.0,1.55,0.05],[-1,0,0.6],0.5,'Posição aproximada no PSS 7000.'],
   ['24','Engate rápido baioneta',1,'mask',['*'],[-0.9282,1.7233,0.0201],[-0.7,0.1,0.7],0.5,'No PSS 7000 o engate é do tipo encaixe (plug-in).']
-].map(([n,name,score,file,meshes,probe,view,dist,note])=>({n,name,score,file,meshes,probe,view,dist,note,fixed:['02','08','09','17','18','22','24'].includes(n),group:file==='body'?null:file}));
+].map(([n,name,score,file,meshes,probe,view,dist,note])=>({n,name,score,file,meshes,probe,view,dist,note,fixed:['02','08','09','12','17','18','22','24'].includes(n),group:file==='body'?null:file}));
 
 const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
   .replace(/[º°ª]/g,'').replace(/(\d)o\b/g,'$1').replace(/[^a-z0-9]/g,'');
@@ -5557,6 +5563,19 @@ function buildGauge(){
   const C=new THREE.Vector3(-0.76,0.72,0.64);
   g.children.slice(0,4).forEach(m=>{m.position.sub(C).multiplyScalar(1.5).add(C);m.scale.multiplyScalar(1.5);});
   g.children[5].position.y=0.855;
+  return g;
+}
+/* Manômetro do cilindro: peça representativa presa à válvula do cilindro */
+function buildCylGauge(){
+  const g=new THREE.Group(), M=(c,o)=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.6,metalness:0},o||{}));
+  const add=(geo,mat,pos,rot)=>{const m=new THREE.Mesh(geo,mat);m.position.set(...pos);if(rot)m.rotation.set(...rot);g.add(m);return m;};
+  const X=0.33,Y=-0.01,R2=Math.PI/2;
+  add(new THREE.CylinderGeometry(0.009,0.009,0.03,16),M(0xb9bec4,{metalness:.85,roughness:.3}),[X,Y,0.095],[R2,0,0]);
+  add(new THREE.CylinderGeometry(0.036,0.036,0.02,40),M(0x050506,{roughness:.9}),[X,Y,0.112],[R2,0,0]);
+  add(new THREE.CylinderGeometry(0.038,0.038,0.006,40),M(0x050506,{roughness:.9}),[X,Y,0.122],[R2,0,0]);
+  add(new THREE.CircleGeometry(0.03,40),M(0xf4f5f2,{roughness:.4}),[X,Y,0.1256]);
+  add(new THREE.BoxGeometry(0.003,0.026,0.002),M(0xc8102e),[X+0.004,Y+0.006,0.1268],[0,0,-0.9]);
+  add(new THREE.RingGeometry(0.022,0.026,40,1,Math.PI*1.15,Math.PI*0.35),M(0xc8102e),[X,Y,0.1262]);
   return g;
 }
 function parse(name){
@@ -5811,7 +5830,7 @@ canvas.addEventListener('pointerup',e=>{
 
 /* ---------- Etapas ---------- */
 const HINTS={
-  1:'Observe cada peça e o nome ligado a ela. Toque no número do item para a câmera ir até a peça; setas tracejadas apontam para peças escondidas atrás de outras.',
+  1:'Observe cada peça e o nome ligado a ela. Quando estiver pronto, toque em Próxima etapa, no canto direito. Toque no número do item para a câmera ir até a peça; setas tracejadas apontam para peças escondidas atrás de outras.',
   2:'Escreva por cima do nome apagado. O campo fica verde quando o nome estiver certo. Enter passa para o próximo item, e a câmera vai até a peça.',
   3:'Escreva o nome da peça e aperte Enter: o item é corrigido na hora e a câmera vai até a próxima peça. O cronômetro começa na primeira letra; o barema dá 5 minutos.'
 };
@@ -5822,7 +5841,8 @@ function setStage(s){
   stage=s; document.body.dataset.stage=s;
   [1,2,3].forEach(k=>document.getElementById('tab'+k).setAttribute('aria-selected',String(k===s)));
   hintEl.textContent=HINTS[s];
-  btnNext.textContent=s===1?'Próximo: escrever por cima':'Próximo: de memória';
+  btnNext.textContent=s===1?'Próxima etapa: 2 · Escrever por cima →':'Próxima etapa: 3 · De memória →';
+  btnNext.classList.toggle('ready',s===1);
   clearMarks(); stopTimer(); t0=null; graded=false; result=null; ITEMS.forEach(it=>it.done=false);
   if(s===3) ITEMS.forEach(it=>{it.ta.value='';});
   ITEMS.forEach(it=>autosize(it.ta));
@@ -5858,7 +5878,16 @@ function onInput(it){
 }
 function stopTimer(){if(timer){clearInterval(timer);timer=null;}}
 function mmss(ms){const s=Math.floor(ms/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+function updateDone(){
+  const dm=document.getElementById('doneMsg'), dt=document.getElementById('doneText');
+  let show=false;
+  if(stage===2&&ITEMS.every(x=>match(x,x.ta.value))){show=true;dt.textContent='Etapa 2 concluída: os 20 nomes estão certos. Agora escreva de memória.';document.getElementById('btnNext2').textContent='Ir para a etapa 3 · De memória →';}
+  if(stage===3&&graded){show=true;dt.textContent='Prova concluída. Para treinar de novo, volte para a etapa 1 ou refaça a etapa 3.';document.getElementById('btnNext2').textContent='Refazer a etapa 3';}
+  dm.hidden=!show;
+  if(stage===2) btnNext.classList.toggle('ready',show);
+}
 function renderStatus(){
+  updateDone();
   if(stage===1){statusEl.textContent='';return;}
   if(stage===2){
     const n=ITEMS.filter(it=>match(it,it.ta.value)).length;
@@ -5891,6 +5920,7 @@ function grade(){
 }
 [1,2,3].forEach(k=>document.getElementById('tab'+k).addEventListener('click',()=>setStage(k)));
 btnNext.addEventListener('click',()=>setStage(Math.min(3,stage+1)));
+document.getElementById('btnNext2').addEventListener('click',()=>setStage(stage===3?3:stage+1));
 document.getElementById('btnGrade').addEventListener('click',grade);
 document.getElementById('btnClear').addEventListener('click',()=>{ITEMS.forEach(it=>{it.ta.value='';it.done=false;autosize(it.ta);});clearMarks();stopTimer();t0=null;graded=false;result=null;renderStatus();});
 setStage(1);
@@ -5947,6 +5977,7 @@ function progress(v,label){const pc=Math.round(v*100);pfill.style.width=pc+'%';p
 async function boot(){
   const steps=[['body','Carregando suporte, tirantes e mangueiras'],['tank','Carregando cilindro e válvula'],['mask','Carregando máscara'],['unit','Montando manômetro e apito']];
   for(let i=0;i<steps.length;i++){progress(i/6,steps[i][1]);await frame();await parse(steps[i][0]);}
+  roots.tank.add(buildCylGauge());
   progress(4/6,'Aplicando texturas'); await frame();
   await applyTextures();
   progress(4.5/6,'Ligando as setas às peças'); await frame();
