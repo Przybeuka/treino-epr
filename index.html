@@ -129,15 +129,21 @@ button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outl
 .credit{margin:0;font:600 14px var(--f-body);color:var(--ink)}
 .foot{margin:0;font-size:13px;color:var(--muted);max-width:80ch}
 
+/* Celular e tablet: o modelo fica preso no topo e a lista rola por baixo dele */
 @media (max-width:979px){
   .board{grid-template-columns:1fr 1fr}
-  .viewport{grid-column:1/-1;order:-1;min-height:0;height:min(62vh,560px)}
+  .viewport{grid-column:1/-1;order:-1;min-height:220px;height:44vh;height:44svh;position:sticky;top:env(safe-area-inset-top,0px);z-index:4;box-shadow:0 6px 12px -8px rgba(20,32,42,.35)}
+  .overlay{z-index:5}
   .col{justify-content:flex-start}
   .leader{display:none}
+  .gesture{display:none}
+  [data-stage="2"] .board,[data-stage="3"] .board{padding-bottom:55vh}
 }
 @media (max-width:640px){
   .board{grid-template-columns:1fr}
-  .viewport{height:60vh}
+  .viewport{height:40vh;height:40svh}
+  .vtools .btn.small{padding:4px 8px;font-size:12px}
+  .explode input{width:70px}
 }
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
@@ -5632,7 +5638,7 @@ ITEMS.forEach((it,i)=>{
 
   const on=()=>setActive(it), off=()=>setActive(null);
   el.addEventListener('mouseenter',on); el.addEventListener('mouseleave',()=>{if(document.activeElement!==ta) off();});
-  ta.addEventListener('focus',()=>{on(); if(stage>1&&it.world&&!adjusting) zoomTo(it,true);}); ta.addEventListener('blur',off);
+  ta.addEventListener('focus',()=>{on(); if(stage>1&&it.world&&!adjusting) zoomTo(it,true); if(!mqWide.matches) setTimeout(()=>keepVisible(it),250);}); ta.addEventListener('blur',off);
   g.addEventListener('mouseenter',on); g.addEventListener('mouseleave',off);
   g.addEventListener('click',()=>{ if(stage>1) ta.focus(); el.scrollIntoView({block:'nearest',behavior:reduce?'auto':'smooth'}); setActive(it); });
   el.querySelector('.num').addEventListener('click',()=>{
@@ -5647,6 +5653,12 @@ ITEMS.forEach((it,i)=>{
   ta.addEventListener('input',()=>{ autosize(ta); onInput(it); });
   colL.appendChild(el);
 });
+/* No celular, deixa o campo logo abaixo do modelo preso no topo, longe do teclado */
+function keepVisible(it){
+  const vp=viewport.getBoundingClientRect(), r=it.el.getBoundingClientRect();
+  const want=vp.bottom+12;
+  if(Math.abs(r.top-want)>4) window.scrollBy({top:r.top-want,behavior:reduce?'auto':'smooth'});
+}
 function setActive(it){
   if(active){active.el.classList.remove('active');active.path.classList.remove('active');active.pin.classList.remove('active');}
   active=it;
