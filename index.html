@@ -5838,9 +5838,23 @@ function pickGhost(it){
   it.ghost.dataset.alt=g; it.ghost.textContent=g;
 }
 function liveMark(it){const ok=match(it,it.ta.value);it.el.classList.toggle('ok',ok);it.pin.classList.toggle('ok',ok);}
+/* Quando o nome fica certo, o app passa sozinho para o próximo item */
+function goNext(it){
+  const i=ITEMS.indexOf(it);
+  const nx=ITEMS.slice(i+1).find(x=>stage===3?!x.done:!match(x,x.ta.value))||ITEMS.find(x=>x!==it&&(stage===3?!x.done:!match(x,x.ta.value)));
+  if(nx) nx.ta.focus(); else it.ta.blur();
+}
 function onInput(it){
   if(stage===2){pickGhost(it);liveMark(it);renderStatus();}
   else if(stage===3&&!graded&&!t0){t0=Date.now();timer=setInterval(renderStatus,250);}
+  if(stage>1&&!graded&&match(it,it.ta.value)){
+    clearTimeout(it.adv);
+    it.adv=setTimeout(()=>{
+      if(!match(it,it.ta.value)||document.activeElement!==it.ta) return;
+      if(stage===3){ if(!it.done) checkOne(it); if(!graded) goNext(it); }
+      else goNext(it);
+    },400);
+  }
 }
 function stopTimer(){if(timer){clearInterval(timer);timer=null;}}
 function mmss(ms){const s=Math.floor(ms/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
