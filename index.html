@@ -5512,8 +5512,8 @@ const ITEMS = [
   ['11','Cilindro',0.5,'tank',['Sphere'],[0.6,0.95,0.15],[1,0.2,0.6],1.6,''],
   ['12','Manômetro do cilindro',0.5,'tank',['*'],[0.33,-0.01,0.128],[0.3,0.15,1],0.45,''],
   ['13','Batente do cilindro',0.5,'body',['Drager_AirBoss_26','Drager_AirBoss_58'],[0.12,-0.18,0.25],[1,0.2,0.6],0.7,'Posição aproximada no PSS 7000.'],
-  ['14','Conexão cga - Rosca macho',0.5,'body',['Drager_AirBoss_27'],[0.18,0.0,0.06],[0.5,0,1],0.5,''],
-  ['15','Anel de vedação ou o-ring',1,'body',['Drager_AirBoss_27'],[0.158,-0.017,0.13],[0.3,0,1],0.45,'Posição aproximada no PSS 7000.'],
+  ['14','Conexão cga - Rosca macho',0.5,'tank',['*'],[0.212,0.009,0.057],[0.4,0.2,1],0.5,''],
+  ['15','Anel de vedação ou o-ring',1,'tank',['*'],[0.09,0.012,0.06],[0.3,0.25,1],0.5,'Fica por dentro da conexão. Use Separar peças para ver o anel.'],
   ['17','Peça facial ou máscara facial',0.5,'mask',['Plane_005'],[-0.6753,1.9676,0.2291],[-0.32,0.22,1],0.9,''],
   ['18','Visor panorâmico',0.5,'mask',['Plane_005_5'],[-0.8016,2.0723,0.0594],[-1,0.2,0.4],1.0,''],
   ['19','Orifício de conexão da válvula de demanda',1,'mask',['Plane_005_2'],[-0.95,1.55,0.08],[-0.8,-0.1,0.6],0.55,''],
@@ -5521,7 +5521,7 @@ const ITEMS = [
   ['22','Mascarilha',1,'mask',['Plane_005_5'],[-0.862,1.853,0.039],[-1,0.2,0.4],0.6,''],
   ['23','Botão do sistema by pass ou botão de economia de ar',1,'mask',['Plane_005_4'],[-1.0,1.55,0.05],[-1,0,0.6],0.5,'Posição aproximada no PSS 7000.'],
   ['24','Engate rápido baioneta',1,'mask',['*'],[-0.9282,1.7233,0.0201],[-0.7,0.1,0.7],0.5,'No PSS 7000 o engate é do tipo encaixe (plug-in).']
-].map(([n,name,score,file,meshes,probe,view,dist,note])=>({n,name,score,file,meshes,probe,view,dist,note,fixed:['02','08','09','12','17','18','22','24'].includes(n),group:file==='body'?null:file}));
+].map(([n,name,score,file,meshes,probe,view,dist,note])=>({n,name,score,file,meshes,probe,view,dist,note,fixed:['02','08','09','12','14','15','17','18','22','24'].includes(n),group:file==='body'?null:file}));
 
 const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
   .replace(/[º°ª]/g,'').replace(/(\d)o\b/g,'$1').replace(/[^a-z0-9]/g,'');
@@ -5582,6 +5582,8 @@ function buildCylGauge(){
   add(new THREE.CircleGeometry(0.03,40),M(0xf4f5f2,{roughness:.4}),[X,Y,0.1256]);
   add(new THREE.BoxGeometry(0.003,0.026,0.002),M(0xc8102e),[X+0.004,Y+0.006,0.1268],[0,0,-0.9]);
   add(new THREE.RingGeometry(0.022,0.026,40,1,Math.PI*1.15,Math.PI*0.35),M(0xc8102e),[X,Y,0.1262]);
+  /* Anel de vedação (o-ring) na ponta da rosca da válvula, por dentro da conexão */
+  add(new THREE.TorusGeometry(0.0335,0.0045,12,40),M(0x111214,{roughness:.7}),[0.09,-0.0145,0.0335],[0,Math.PI/2,0]);
   return g;
 }
 function parse(name){
@@ -5740,7 +5742,7 @@ controls.addEventListener('change',moved);
 function moved(){occDirty=true;needsRender=true;lastMove=performance.now();}
 
 /* Separar peças */
-const EXPLODE={tank:new THREE.Vector3(0.62,-0.02,0.05),mask:new THREE.Vector3(-0.22,0.5,0.02),unit:new THREE.Vector3(-0.35,-0.05,0.45),ldv:new THREE.Vector3(0,0,0)};
+const EXPLODE={tank:new THREE.Vector3(0.62,-0.02,0.05),mask:new THREE.Vector3(-0.22,0.5,0.02),unit:new THREE.Vector3(0,0,0),ldv:new THREE.Vector3(0,0,0)};
 const LDV=['Drager_AirBoss_21','Drager_AirBoss_22','Drager_AirBoss_23','Drager_AirBoss_32','Drager_AirBoss_33','Drager_AirBoss_35'].map(nm);
 const explodeObjs={tank:[],mask:[],unit:[],ldv:[]};
 let explodeT=0, explodeTarget=0;
