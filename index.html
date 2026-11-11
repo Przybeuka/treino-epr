@@ -5517,7 +5517,7 @@ const ITEMS = [
   ['09','Regulador de respiração ou válvula de demanda',1,'mask',['*'],[-0.902,1.586,0.008],[-0.8,0,0.6],0.55,''],
   ['10','Mangueiras ou dutos do sistema pneumático',0.5,'body',['Drager_AirBoss_20'],[-0.7,1.0,0.62],[-0.1,0.3,1],1.2,''],
   ['11','Cilindro',0.5,'tank',['Sphere'],[0.6,0.95,0.15],[1,0.2,0.6],1.6,''],
-  ['12','Manômetro do cilindro',0.5,'tank',['*'],[0.33,-0.01,0.128],[0.3,0.15,1],0.45,''],
+  ['12','Manômetro do cilindro',0.5,'tank',['*'],[0.33,-0.01,0.116],[0.3,0.15,1],0.45,''],
   ['13','Batente do cilindro',0.5,'body',['Drager_AirBoss_26','Drager_AirBoss_58'],[0.12,-0.18,0.25],[1,0.2,0.6],0.7,'Posição aproximada no PSS 7000.'],
   ['14','Conexão cga - Rosca macho',0.5,'tank',['*'],[0.212,0.009,0.057],[0.4,0.2,1],0.5,''],
   ['15','Anel de vedação ou o-ring',1,'tank',['*'],[0.09,0.012,0.06],[0.3,0.25,1],0.5,'Fica por dentro da conexão. Use Separar peças para ver o anel.'],
@@ -5589,6 +5589,9 @@ function buildCylGauge(){
   add(new THREE.CircleGeometry(0.03,40),M(0xf4f5f2,{roughness:.4}),[X,Y,0.1256]);
   add(new THREE.BoxGeometry(0.003,0.026,0.002),M(0xc8102e),[X+0.004,Y+0.006,0.1268],[0,0,-0.9]);
   add(new THREE.RingGeometry(0.022,0.026,40,1,Math.PI*1.15,Math.PI*0.35),M(0xc8102e),[X,Y,0.1262]);
+  /* Manômetro 30% menor, encolhido a partir do ponto onde encosta na válvula */
+  const P0=new THREE.Vector3(X,Y,0.085);
+  g.children.slice(0,6).forEach(m=>{m.position.sub(P0).multiplyScalar(0.7).add(P0);m.scale.multiplyScalar(0.7);});
   /* Anel de vedação (o-ring) na ponta da rosca da válvula, por dentro da conexão */
   add(new THREE.TorusGeometry(0.0335,0.0045,12,40),M(0x111214,{roughness:.7}),[0.09,-0.0145,0.0335],[0,Math.PI/2,0]);
   return g;
