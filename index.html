@@ -176,7 +176,6 @@ body.fs .field textarea{min-height:calc(1.2em + 4px)}
 body.fs .fix{grid-column:2/3;font-size:10px}
 body.fs .leader{display:block}
 body.fs .vtools .btn.small{padding:3px 8px;font-size:12px}
-body.fs .fsbar{display:flex}
 body.fs.portrait .rotate-hint{display:grid;position:fixed;inset:0;z-index:60;place-items:center;text-align:center;background:var(--bg);color:var(--ink);padding:24px;font:600 20px var(--f-body)}
 .rotate-hint p{margin:0 0 14px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
@@ -5765,7 +5764,7 @@ function arrange(){
 
 /* Oclusão */
 const ray=new THREE.Raycaster(), dir=new THREE.Vector3();
-let occDirty=true, lastMove=0, needsRender=true;
+let occDirty=true, lastMove=0, needsRender=true, occLast=0, lastUser=0;
 function occlusion(){
   if(!ready) return;
   ITEMS.forEach(it=>{
@@ -5802,6 +5801,7 @@ function computeHome(){
   homePos.copy(HOME_T).addScaledVector(HOME_DIR,d);
 }
 function tween(tt,tp){
+  lastUser=performance.now()+3000;
   if(reduce){controls.target.copy(tt);camera.position.copy(tp);controls.update();moved();return;}
   anim={t:0,ft:controls.target.clone(),fp:camera.position.clone(),tt:tt.clone(),tp:tp.clone()};
 }
@@ -5812,7 +5812,8 @@ function zoomTo(it,far){
   tween(it.world,it.world.clone().addScaledVector(v,d));
 }
 document.getElementById('btnHome').addEventListener('click',()=>{touched=false;tween(HOME_T,homePos);});
-controls.addEventListener('start',()=>{touched=true;anim=null;});
+controls.addEventListener('start',()=>{touched=true;anim=null;lastUser=performance.now();});
+controls.addEventListener('end',()=>{lastUser=performance.now();});
 controls.addEventListener('change',moved);
 function moved(){occDirty=true;needsRender=true;lastMove=performance.now();}
 
@@ -5865,10 +5866,14 @@ function loop(now){
     if(explodeAnim.t>=1){explodeT=explodeAnim.to;explodeAnim=null;}
     applyExplode();
   }
+  /* Giro lento de apresentação: para enquanto a pessoa mexe no modelo ou digita, e volta depois de 4 s parado */
+  const typing=document.activeElement&&document.activeElement.tagName==='TEXTAREA';
+  controls.autoRotate=ready&&!reduce&&!anim&&!typing&&!adjusting&&!active&&now-lastUser>4000;
+  controls.autoRotateSpeed=0.35;
   controls.update();
   if(needsRender){renderer.render(scene,camera);needsRender=false;}
   if(ready){
-    if(occDirty&&now-lastMove>220&&!anim){occlusion();occDirty=false;}
+    if(occDirty&&((now-lastMove>220&&!anim)||(controls.autoRotate&&now-occLast>300))){occlusion();occDirty=false;occLast=now;}
     draw();
   }
   requestAnimationFrame(loop);
@@ -5927,6 +5932,7 @@ const btnFs=document.getElementById('btnFs'), mqPortrait=window.matchMedia('(ori
 function afterLayout(){ITEMS.forEach(it=>{it.ta.rows=fsOn?1:2;});requestAnimationFrame(()=>requestAnimationFrame(()=>{resize();arrange();moved();}));}
 function updPortrait(){document.body.classList.toggle('portrait',fsOn&&mqPortrait.matches);}
 async function enterFs(){
+  if(stage!==1) setStage(1);
   fsOn=true; document.documentElement.classList.add('fs-lock'); document.body.classList.add('fs');
   btnFs.textContent='Sair'; btnFs.setAttribute('aria-pressed','true'); window.scrollTo(0,0);
   const el=document.documentElement;
