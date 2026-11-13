@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>Inspeção Visual do EPR</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
@@ -5707,7 +5707,7 @@ ITEMS.forEach((it,i)=>{
 
   const on=()=>setActive(it), off=()=>setActive(null);
   el.addEventListener('mouseenter',on); el.addEventListener('mouseleave',()=>{if(document.activeElement!==ta) off();});
-  ta.addEventListener('focus',()=>{on(); if(stage>1&&it.world&&!adjusting) zoomTo(it,true); if(!isWide()) setTimeout(()=>keepVisible(it),250);}); ta.addEventListener('blur',off);
+  ta.addEventListener('focus',()=>{on(); if(stage>1&&it.world&&!adjusting) zoomTo(it,touchDev?'keep':true); if(!isWide()) setTimeout(()=>keepVisible(it),250);}); ta.addEventListener('blur',off);
   g.addEventListener('mouseenter',on); g.addEventListener('mouseleave',off);
   g.addEventListener('click',()=>{ if(stage>1) ta.focus(); el.scrollIntoView({block:'nearest',behavior:reduce?'auto':'smooth'}); setActive(it); });
   el.querySelector('.num').addEventListener('click',()=>{
@@ -5737,6 +5737,8 @@ function autosize(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px
 
 const mqWide=window.matchMedia('(min-width: 980px)');
 let fsOn=false;
+/* Celular e tablet: ao digitar, a câmera só gira até a peça, sem aproximar */
+const touchDev=window.matchMedia('(pointer: coarse)').matches;
 function isWide(){return fsOn||mqWide.matches;}
 const tmp=new THREE.Vector3();
 let vw=1,vh=1,ready=false;
@@ -5803,7 +5805,7 @@ function tween(tt,tp){
 function zoomTo(it,far){
   touched=true;
   const v=new THREE.Vector3(...it.view).normalize();
-  const d=far?Math.max(it.dist*2.4,1.4):it.dist;
+  const d=far==='keep'?camera.position.distanceTo(controls.target):(far?Math.max(it.dist*2.4,1.4):it.dist);
   tween(it.world,it.world.clone().addScaledVector(v,d));
 }
 document.getElementById('btnHome').addEventListener('click',()=>{touched=false;tween(HOME_T,homePos);});
