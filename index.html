@@ -152,6 +152,31 @@ button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outl
   .vtools .btn.small{padding:4px 8px;font-size:12px}
   .explode input{width:70px}
 }
+/* Tela cheia na horizontal: página travada, só o modelo gira, nomes nas laterais */
+.fsbar{display:none;position:absolute;left:8px;bottom:8px;z-index:4;gap:4px;align-items:center;flex-wrap:wrap;max-width:calc(100% - 16px)}
+.fsbar [aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.fsstatus{font:500 11px var(--f-mono);background:var(--panel);color:var(--ink);padding:3px 6px;border-radius:4px;border:1px solid var(--line);font-variant-numeric:tabular-nums}
+.fsstatus:empty{display:none}
+[data-stage="1"] #fsGrade,[data-stage="2"] #fsGrade{display:none}
+.rotate-hint{display:none}
+html.fs-lock,html.fs-lock body{overflow:hidden;overscroll-behavior:none;height:100%}
+body.fs{position:fixed;inset:0;width:100%}
+body.fs .bar,body.fs .hint,body.fs .done-msg,body.fs .credit,body.fs .foot,body.fs .gesture,body.fs #btnAdjust,body.fs .explode input{display:none}
+body.fs .board{position:fixed;inset:0;z-index:30;background:var(--bg);grid-template-columns:minmax(150px,30%) minmax(0,1fr) minmax(150px,30%);grid-template-rows:minmax(0,1fr);gap:6px;
+  padding:max(6px,env(safe-area-inset-top,0px)) max(6px,env(safe-area-inset-right,0px)) max(6px,env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-left,0px))}
+body.fs .viewport{grid-column:auto;order:0;position:relative;top:auto;height:auto;min-height:0;box-shadow:none}
+body.fs .col{justify-content:space-between;gap:3px;overflow-y:auto;overscroll-behavior:contain;min-height:0}
+body.fs .lab{grid-template-columns:24px minmax(0,1fr);gap:0 6px;padding:2px 6px 2px 3px;align-items:center}
+body.fs .num{width:24px;height:18px;font-size:10px}
+body.fs .pts,body.fs .note{display:none}
+body.fs .ghost,body.fs .field textarea{font-size:10.5px;line-height:1.15;padding:1px 0 2px}
+body.fs .field textarea{min-height:calc(1.2em + 4px)}
+body.fs .fix{grid-column:2/3;font-size:10px}
+body.fs .leader{display:block}
+body.fs .vtools .btn.small{padding:3px 8px;font-size:12px}
+body.fs .fsbar{display:flex}
+body.fs.portrait .rotate-hint{display:grid;position:fixed;inset:0;z-index:60;place-items:center;text-align:center;background:var(--bg);color:var(--ink);padding:24px;font:600 20px var(--f-body)}
+.rotate-hint p{margin:0 0 14px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -160,12 +185,13 @@ button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outl
   <div class="intro-card">
     <p class="eyebrow">CBMPR · Verificação de aprendizagem</p>
     <h2>Inspeção visual do EPR</h2>
-    <p class="intro-sub">Dräger PSS 7000 · 20 itens · 15 escores · tempo máximo 5 minutos</p>
+    <p class="intro-sub">Dräger PSS 7000 · 25 itens · 25 escores · tempo máximo 5 minutos</p>
     <div class="pbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="pbar"><i id="pfill"></i></div>
     <p class="pstep"><span id="pstep">Preparando…</span><span id="ppct">0%</span></p>
     <button class="btn primary" id="btnStart" hidden>Começar</button>
   </div>
 </div>
+<div class="rotate-hint" id="rotateHint"><div><p>Gire o celular para a horizontal</p><button class="btn" id="btnFsExit2">Sair da tela cheia</button></div></div>
 <div class="wrap">
 
   <nav class="bar">
@@ -192,6 +218,7 @@ button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outl
         <div class="explode"><button class="btn small" id="btnExplode" aria-pressed="false">Separar peças</button><input type="range" id="explodeRange" min="0" max="100" value="0" aria-label="Quanto separar as peças"></div>
         <button class="btn small" id="btnAdjust" aria-pressed="false">Ajustar setas</button>
         <button class="btn small" id="btnHome">Recentrar</button>
+        <button class="btn small primary" id="btnFs" aria-pressed="false">Tela cheia</button>
       </div>
       <div class="adjustbar" id="adjustbar" hidden>
         <p><strong>Ajuste das setas.</strong> Toque no número de um item e depois toque no ponto certo da peça no modelo. As posições ficam salvas neste navegador.</p>
@@ -202,6 +229,13 @@ button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outl
           <button class="btn small" id="btnDone">Concluir</button>
         </div>
         <textarea id="exportBox" readonly hidden aria-label="Posições das setas"></textarea>
+      </div>
+      <div class="fsbar" id="fsbar">
+        <button class="btn small" data-fs="1">1 Estudo</button>
+        <button class="btn small" data-fs="2">2 Por cima</button>
+        <button class="btn small" data-fs="3">3 Memória</button>
+        <span class="fsstatus" id="fsStatus"></span>
+        <button class="btn small primary" id="fsGrade">Corrigir</button>
       </div>
       <p class="gesture">Arraste para girar · roda do mouse ou pinça para aproximar · toque no número do item para ir até a peça</p>
     </div>
@@ -5512,22 +5546,27 @@ const ITEMS = [
   ['02','Alarme de baixa pressão tipo apito',1,'unit',['Drager_AirBoss_47','Drager_AirBoss_51'],[-0.75,0.93,0.66],[-0.2,0.6,1],0.6,'No equipamento do modelo o alarme de baixa pressão é eletrônico, na unidade Bodyguard.'],
   ['03','Suporte dorsal ou Backplate',1,'body',['Plane016','Drager_AirBoss_mesh'],[0.14,1.25,0.37],[0.6,0.3,1],1.4,''],
   ['04','Tirantes abdominais ou tirantes de cintura',1,'body',['Drager_AirBoss_13'],[-0.45,0.36,0.6],[0.1,0.3,1],1.3,''],
-  ['07','Tirantes de ombro',0.5,'body',['Drager_AirBoss_4','Drager_AirBoss_5'],[-0.25,1.0,0.65],[0.1,0.3,1],1.3,''],
-  ['08','Manômetro luminescente',0.5,'unit',['*screenshot'],[-0.80,0.48,0.65],[-1,0.2,0.6],0.6,'No equipamento do modelo a leitura da pressão fica no visor da Bodyguard.'],
+  ['05','Retentor da válvula de demanda',1,'body',['Drager_AirBoss_21'],[-0.22,0.3,-0.76],[0.3,0.2,-1],0.8,'Posição aproximada no PSS 7000.'],
+  ['06','Engate carona ou saída carona',1,'body',['Drager_AirBoss_34'],[-0.654,1.443,-0.5],[-0.2,0.3,-1],0.7,'Posição aproximada no PSS 7000.'],
+  ['07','Tirantes de ombro',1,'body',['Drager_AirBoss_4','Drager_AirBoss_5'],[-0.25,1.0,0.65],[0.1,0.3,1],1.3,''],
+  ['08','Manômetro luminescente',1,'unit',['*screenshot'],[-0.80,0.48,0.65],[-1,0.2,0.6],0.6,'No equipamento do modelo a leitura da pressão fica no visor da Bodyguard.'],
   ['09','Regulador de respiração ou válvula de demanda',1,'mask',['*'],[-0.902,1.586,0.008],[-0.8,0,0.6],0.55,''],
-  ['10','Mangueiras ou dutos do sistema pneumático',0.5,'body',['Drager_AirBoss_20'],[-0.7,1.0,0.62],[-0.1,0.3,1],1.2,''],
-  ['11','Cilindro',0.5,'tank',['Sphere'],[0.6,0.95,0.15],[1,0.2,0.6],1.6,''],
-  ['12','Manômetro do cilindro',0.5,'tank',['*'],[0.33,-0.01,0.128],[0.3,0.15,1],0.45,''],
-  ['13','Batente do cilindro',0.5,'body',['Drager_AirBoss_26','Drager_AirBoss_58'],[0.12,-0.18,0.25],[1,0.2,0.6],0.7,'Posição aproximada no PSS 7000.'],
-  ['14','Conexão cga - Rosca macho',0.5,'tank',['*'],[0.212,0.009,0.057],[0.4,0.2,1],0.5,''],
+  ['10','Mangueiras ou dutos do sistema pneumático',1,'body',['Drager_AirBoss_20'],[-0.7,1.0,0.62],[-0.1,0.3,1],1.2,''],
+  ['11','Cilindro',1,'tank',['Sphere'],[0.6,0.95,0.15],[1,0.2,0.6],1.6,''],
+  ['12','Manômetro do cilindro',1,'tank',['*'],[0.33,-0.01,0.128],[0.3,0.15,1],0.45,''],
+  ['13','Batente do cilindro',1,'body',['Drager_AirBoss_26','Drager_AirBoss_58'],[0.12,-0.18,0.25],[1,0.2,0.6],0.7,'Posição aproximada no PSS 7000.'],
+  ['14','Conexão cga - Rosca macho',1,'tank',['*'],[0.212,0.009,0.057],[0.4,0.2,1],0.5,''],
   ['15','Anel de vedação ou o-ring',1,'tank',['*'],[0.09,0.012,0.06],[0.3,0.25,1],0.5,'Fica por dentro da conexão. Use Separar peças para ver o anel.'],
-  ['17','Peça facial ou máscara facial',0.5,'mask',['Plane_005'],[-0.6753,1.9676,0.2291],[-0.32,0.22,1],0.9,''],
-  ['18','Visor panorâmico',0.5,'mask',['Plane_005_5'],[-0.8016,2.0723,0.0594],[-1,0.2,0.4],1.0,''],
+  ['16','Correia retentora do cilindro',1,'body',['Drager_AirBoss_19'],[0.1,0.8,0.36],[0.6,0.2,1],1.0,''],
+  ['17','Peça facial ou máscara facial',1,'mask',['Plane_005'],[-0.6753,1.9676,0.2291],[-0.32,0.22,1],0.9,''],
+  ['18','Visor panorâmico',1,'mask',['Plane_005_5'],[-0.8016,2.0723,0.0594],[-1,0.2,0.4],1.0,''],
   ['19','Orifício de conexão da válvula de demanda',1,'mask',['Plane_005_2'],[-0.95,1.55,0.08],[-0.8,-0.1,0.6],0.55,''],
-  ['20','Tirantes de cabeça',0.5,'mask',['*'],[-0.40,2.2,-0.05],[0.4,0.6,0.6],1.0,''],
+  ['20','Tirantes de cabeça',1,'mask',['*'],[-0.40,2.2,-0.05],[0.4,0.6,0.6],1.0,''],
+  ['21','Borracha seladora da máscara',1,'mask',['*'],[-0.64,1.85,-0.14],[0.7,0.2,0.3],0.8,''],
   ['22','Mascarilha',1,'mask',['Plane_005_5'],[-0.862,1.853,0.039],[-1,0.2,0.4],0.6,''],
   ['23','Botão do sistema by pass ou botão de economia de ar',1,'mask',['Plane_005_4'],[-1.0,1.55,0.05],[-1,0,0.6],0.5,'Posição aproximada no PSS 7000.'],
-  ['24','Engate rápido baioneta',1,'mask',['*'],[-0.9282,1.7233,0.0201],[-0.7,0.1,0.7],0.5,'No PSS 7000 o engate é do tipo encaixe (plug-in).']
+  ['24','Engate rápido baioneta',1,'mask',['*'],[-0.9282,1.7233,0.0201],[-0.7,0.1,0.7],0.5,'No PSS 7000 o engate é do tipo encaixe (plug-in).'],
+  ['25','Sistema de rotação 360 graus',1,'body',['Drager_AirBoss_32','Drager_AirBoss_33'],[-0.366,0.19,-0.72],[0.2,0.2,-1],0.6,'Posição aproximada no PSS 7000.'],
 ].map(([n,name,score,file,meshes,probe,view,dist,note])=>({n,name,score,file,meshes,probe,view,dist,note,fixed:['09','12','14','15','17','18','22','24'].includes(n),group:file==='body'?null:file}));
 
 const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
@@ -5668,7 +5707,7 @@ ITEMS.forEach((it,i)=>{
 
   const on=()=>setActive(it), off=()=>setActive(null);
   el.addEventListener('mouseenter',on); el.addEventListener('mouseleave',()=>{if(document.activeElement!==ta) off();});
-  ta.addEventListener('focus',()=>{on(); if(stage>1&&it.world&&!adjusting) zoomTo(it,true); if(!mqWide.matches) setTimeout(()=>keepVisible(it),250);}); ta.addEventListener('blur',off);
+  ta.addEventListener('focus',()=>{on(); if(stage>1&&it.world&&!adjusting) zoomTo(it,true); if(!isWide()) setTimeout(()=>keepVisible(it),250);}); ta.addEventListener('blur',off);
   g.addEventListener('mouseenter',on); g.addEventListener('mouseleave',off);
   g.addEventListener('click',()=>{ if(stage>1) ta.focus(); el.scrollIntoView({block:'nearest',behavior:reduce?'auto':'smooth'}); setActive(it); });
   el.querySelector('.num').addEventListener('click',()=>{
@@ -5697,21 +5736,24 @@ function setActive(it){
 function autosize(ta){ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';}
 
 const mqWide=window.matchMedia('(min-width: 980px)');
+let fsOn=false;
+function isWide(){return fsOn||mqWide.matches;}
 const tmp=new THREE.Vector3();
 let vw=1,vh=1,ready=false;
 function project(w){tmp.copy(w).project(camera);return {x:(tmp.x+1)/2*vw,y:(1-tmp.y)/2*vh,z:tmp.z};}
 function arrange(){
   if(!ready) return;
-  if(mqWide.matches){
+  if(isWide()){
     const ps=ITEMS.map(it=>({it,p:project(it.world)}));
     const byX=[...ps].sort((a,b)=>a.p.x-b.p.x);
-    byX.forEach((o,k)=>o.it.side=k<10?'L':'R');
+    const half=Math.ceil(ITEMS.length/2);
+    byX.forEach((o,k)=>o.it.side=k<half?'L':'R');
     ['L','R'].forEach(side=>{
       const col=side==='L'?colL:colR;
       ps.filter(o=>o.it.side===side).sort((a,b)=>a.p.y-b.p.y).forEach(o=>col.appendChild(o.it.el));
     });
   } else {
-    ITEMS.forEach((it,i)=>(i<10?colL:colR).appendChild(it.el));
+    ITEMS.forEach((it,i)=>(i<Math.ceil(ITEMS.length/2)?colL:colR).appendChild(it.el));
   }
   ITEMS.forEach(it=>autosize(it.ta));
 }
@@ -5730,7 +5772,7 @@ function occlusion(){
 }
 function draw(){
   const br=board.getBoundingClientRect(), vr=viewport.getBoundingClientRect();
-  const ox=vr.left-br.left, oy=vr.top-br.top, wide=mqWide.matches;
+  const ox=vr.left-br.left, oy=vr.top-br.top, wide=isWide();
   const rects=wide?ITEMS.map(it=>it.el.getBoundingClientRect()):null;
   ITEMS.forEach((it,i)=>{
     const p=project(it.world), px=ox+p.x, py=oy+p.y;
@@ -5875,6 +5917,33 @@ canvas.addEventListener('pointerup',e=>{
   it.el.classList.remove('picking'); picking=null;
 });
 
+/* ---------- Tela cheia ---------- */
+const btnFs=document.getElementById('btnFs'), mqPortrait=window.matchMedia('(orientation: portrait)');
+function afterLayout(){ITEMS.forEach(it=>{it.ta.rows=fsOn?1:2;});requestAnimationFrame(()=>requestAnimationFrame(()=>{resize();arrange();moved();}));}
+function updPortrait(){document.body.classList.toggle('portrait',fsOn&&mqPortrait.matches);}
+async function enterFs(){
+  fsOn=true; document.documentElement.classList.add('fs-lock'); document.body.classList.add('fs');
+  btnFs.textContent='Sair'; btnFs.setAttribute('aria-pressed','true'); window.scrollTo(0,0);
+  const el=document.documentElement;
+  try{ if(el.requestFullscreen) await el.requestFullscreen({navigationUI:'hide'}); else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen(); }catch(e){}
+  try{ if(screen.orientation&&screen.orientation.lock) await screen.orientation.lock('landscape'); }catch(e){}
+  updPortrait(); afterLayout();
+}
+function exitFs(fromBrowser){
+  fsOn=false; document.documentElement.classList.remove('fs-lock'); document.body.classList.remove('fs','portrait');
+  btnFs.textContent='Tela cheia'; btnFs.setAttribute('aria-pressed','false');
+  try{ if(screen.orientation&&screen.orientation.unlock) screen.orientation.unlock(); }catch(e){}
+  if(!fromBrowser){ try{ if(document.fullscreenElement) document.exitFullscreen(); else if(document.webkitFullscreenElement) document.webkitExitFullscreen(); }catch(e){} }
+  afterLayout();
+}
+btnFs.addEventListener('click',()=>{ fsOn?exitFs(false):enterFs(); });
+document.getElementById('btnFsExit2').addEventListener('click',()=>exitFs(false));
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{ if(fsOn&&!(document.fullscreenElement||document.webkitFullscreenElement)) exitFs(true); }));
+mqPortrait.addEventListener('change',()=>{ updPortrait(); if(fsOn) afterLayout(); });
+document.querySelectorAll('#fsbar [data-fs]').forEach(b=>b.addEventListener('click',()=>setStage(+b.dataset.fs)));
+document.getElementById('fsGrade').addEventListener('click',()=>grade());
+new MutationObserver(()=>{document.getElementById('fsStatus').innerHTML=document.getElementById('status').innerHTML;}).observe(document.getElementById('status'),{childList:true,subtree:true,characterData:true});
+
 /* ---------- Etapas ---------- */
 const HINTS={
   1:'Observe cada peça e o nome ligado a ela. Quando estiver pronto, toque em Próxima etapa, no canto direito. Toque no número do item para a câmera ir até a peça; setas tracejadas apontam para peças escondidas atrás de outras.',
@@ -5887,6 +5956,7 @@ function clearMarks(){ITEMS.forEach(it=>{it.el.classList.remove('ok','bad');it.p
 function setStage(s){
   stage=s; document.body.dataset.stage=s;
   [1,2,3].forEach(k=>document.getElementById('tab'+k).setAttribute('aria-selected',String(k===s)));
+  document.querySelectorAll('#fsbar [data-fs]').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.fs===s)));
   hintEl.textContent=HINTS[s];
   btnNext.textContent=s===1?'Próxima etapa: 2 · Escrever por cima →':'Próxima etapa: 3 · De memória →';
   btnNext.classList.toggle('ready',s===1);
@@ -5928,7 +5998,7 @@ function mmss(ms){const s=Math.floor(ms/1000);return String(Math.floor(s/60)).pa
 function updateDone(){
   const dm=document.getElementById('doneMsg'), dt=document.getElementById('doneText');
   let show=false;
-  if(stage===2&&ITEMS.every(x=>match(x,x.ta.value))){show=true;dt.textContent='Etapa 2 concluída: os 20 nomes estão certos. Agora escreva de memória.';document.getElementById('btnNext2').textContent='Ir para a etapa 3 · De memória →';}
+  if(stage===2&&ITEMS.every(x=>match(x,x.ta.value))){show=true;dt.textContent='Etapa 2 concluída: os '+ITEMS.length+' nomes estão certos. Agora escreva de memória.';document.getElementById('btnNext2').textContent='Ir para a etapa 3 · De memória →';}
   if(stage===3&&graded){show=true;dt.textContent='Prova concluída. Para treinar de novo, volte para a etapa 1 ou refaça a etapa 3.';document.getElementById('btnNext2').textContent='Refazer a etapa 3';}
   dm.hidden=!show;
   if(stage===2) btnNext.classList.toggle('ready',show);
@@ -5938,12 +6008,12 @@ function renderStatus(){
   if(stage===1){statusEl.textContent='';return;}
   if(stage===2){
     const n=ITEMS.filter(it=>match(it,it.ta.value)).length;
-    statusEl.innerHTML='<strong'+(n===20?' class="good"':'')+'>'+n+' de 20</strong> corretos';return;
+    statusEl.innerHTML='<strong'+(n===ITEMS.length?' class="good"':'')+'>'+n+' de '+ITEMS.length+'</strong> corretos';return;
   }
   const ms=graded?finalMs:(t0?Date.now()-t0:0);
   let h='<span class="'+(ms>300000?'late':'')+'">'+mmss(ms)+'</span> / 05:00';
   if(!graded){const dn=ITEMS.filter(x=>x.done);if(dn.length){const ok=dn.filter(x=>match(x,x.ta.value));h+=' · '+dn.length+' respondidos · <strong>'+ok.length+' certos</strong>';}}
-  if(graded&&result) h+=' · <strong>'+result.hits+' de 20</strong> · <strong>'+fmt(result.pts)+' de '+fmt(TOTAL)+'</strong> escores';
+  if(graded&&result) h+=' · <strong>'+result.hits+' de '+ITEMS.length+'</strong> · <strong>'+fmt(result.pts)+' de '+fmt(TOTAL)+'</strong> escores';
   statusEl.innerHTML=h;
 }
 function checkOne(it){
