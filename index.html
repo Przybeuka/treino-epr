@@ -158,6 +158,8 @@ button:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outl
 .fsstatus{font:500 11px var(--f-mono);background:var(--panel);color:var(--ink);padding:3px 6px;border-radius:4px;border:1px solid var(--line);font-variant-numeric:tabular-nums}
 .fsstatus:empty{display:none}
 [data-stage="1"] #fsGrade,[data-stage="2"] #fsGrade{display:none}
+.fscredit{display:none;position:absolute;right:8px;top:44px;z-index:4;margin:0;font:700 12px var(--f-body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 8px;pointer-events:none}
+body.fs .fscredit{display:block}
 .rotate-hint{display:none}
 html.fs-lock,html.fs-lock body{overflow:hidden;overscroll-behavior:none;height:100%}
 body.fs{position:fixed;inset:0;width:100%}
@@ -230,6 +232,7 @@ body.fs.portrait .rotate-hint{display:grid;position:fixed;inset:0;z-index:60;pla
         </div>
         <textarea id="exportBox" readonly hidden aria-label="Posições das setas"></textarea>
       </div>
+      <p class="fscredit">Feito pelo Al. Sd. BM J. Kauan</p>
       <div class="fsbar" id="fsbar">
         <button class="btn small" data-fs="1">1 Estudo</button>
         <button class="btn small" data-fs="2">2 Por cima</button>
